@@ -1,0 +1,29 @@
+{
+  "__type__": "cc.Material",
+  "_name": "flow-text",
+  "_objFlags": 0,
+  "_native": "",
+  "_effectAsset": {
+    "__uuid__": "37b86196-ed73-4913-874e-c79ccfe013c6"
+  },
+  "_techniqueIndex": 0,
+  "_techniqueData": {
+    "0": {
+      "defines": {
+        "USE_INSTANCING": true
+      },
+      "props": {
+        "mainTexture": {
+          "__uuid__": "3f4ad9f0-65ba-4cc5-9f8f-6353ffb7c286"
+        },
+        "glyphGrid": {
+          "__type__": "cc.Vec4",
+          "x": 8,
+          "y": 4,
+          "z": 0.125,
+          "w": 0.25
+        }
+      }
+    }
+  }
+}

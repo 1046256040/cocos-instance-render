@@ -1,0 +1,15 @@
+/lib
+/web.config
+.idea
+.DS_Store
+build
+aspnet_client
+node_modules
+/bin
+/tools/jsdoc_toolkit-2.4.0
+/package
+/tools/jsdoc_toolkit/jsdoc_toolkit-2.4.0
+/.project
+npm-debug.log
+cocos2d/core/platform/deserialize-compiled.js
+cocos2d/core/value-types/*.js

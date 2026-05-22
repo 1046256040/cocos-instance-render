@@ -1,0 +1,110 @@
+CCEffect %{
+  techniques:
+  - name: opaque
+    passes:
+    - vert: flow-text-vs:vert
+      frag: flow-text-fs:frag
+      properties:
+        mainTexture: { value: white }
+        glyphGrid: { value: [8, 4, 0.125, 0.25] }
+        glyphUvControl: { value: [1, 1, 0, 0] }
+        alphaThreshold: { value: 0.01 }
+      blendState:
+        targets:
+        - blend: true
+          blendSrc: src_alpha
+          blendDst: one_minus_src_alpha
+          blendDstAlpha: one_minus_src_alpha
+      rasterizerState:
+        cullMode: none
+      depthStencilState:
+        depthTest: false
+        depthWrite: false
+}%
+
+
+CCProgram flow-text-vs %{
+  precision highp float;
+  #include <cc-global>
+  #include <cc-local>
+
+  in vec3 a_position;
+  in vec2 a_uv0;
+
+  #if USE_INSTANCING
+    in vec4 a_instanced_transform;
+    in vec4 a_instanced_color;
+    in vec4 a_instanced_glyph;
+  #endif
+
+  uniform Constant {
+    vec4 glyphGrid;
+    vec4 glyphUvControl;
+    float alphaThreshold;
+  };
+
+  out vec2 v_uv0;
+  out vec4 v_color;
+  out float v_alpha;
+
+  vec4 vert () {
+    vec2 localPosition = a_position.xy;
+    float glyphIndex = 0.0;
+    vec4 glyphColor = vec4(1.0);
+    float glyphAlpha = 1.0;
+    float glyphScale = 1.0;
+    vec2 glyphOffset = vec2(0.0);
+
+    #if USE_INSTANCING
+      glyphOffset = a_instanced_transform.xy;
+      glyphScale = a_instanced_transform.z;
+      glyphIndex = a_instanced_glyph.x;
+      glyphAlpha = a_instanced_glyph.y;
+      glyphColor = a_instanced_color;
+    #endif
+
+    float cols = glyphGrid.x;
+    float rows = glyphGrid.y;
+    float cellWidth = glyphGrid.z;
+    float cellHeight = glyphGrid.w;
+    float col = mod(glyphIndex, cols);
+    float logicalRow = floor(glyphIndex / cols);
+    float row = mix(logicalRow, rows - 1.0 - logicalRow, glyphUvControl.x);
+
+    vec2 uv = a_uv0;
+    uv.y = mix(uv.y, 1.0 - uv.y, glyphUvControl.y);
+    uv.x = uv.x * cellWidth + col * cellWidth;
+    uv.y = uv.y * cellHeight + row * cellHeight;
+
+    v_uv0 = uv;
+    v_color = glyphColor;
+    v_alpha = glyphAlpha;
+
+    vec3 position = vec3(localPosition * glyphScale + glyphOffset, a_position.z);
+    return cc_matViewProj * cc_matWorld * vec4(position, 1.0);
+  }
+}%
+
+CCProgram flow-text-fs %{
+  precision highp float;
+  #include <alpha-test>
+  #include <output>
+
+  uniform sampler2D mainTexture;
+  uniform Constant {
+    vec4 glyphGrid;
+    vec4 glyphUvControl;
+    float alphaThreshold;
+  };
+
+  in vec2 v_uv0;
+  in vec4 v_color;
+  in float v_alpha;
+
+  vec4 frag () {
+    vec4 color = texture(mainTexture, v_uv0) * v_color;
+    color.a *= v_alpha;
+    ALPHA_TEST(color);
+    return CCFragOutput(color);
+  }
+}%
