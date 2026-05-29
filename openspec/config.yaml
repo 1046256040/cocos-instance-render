@@ -1,0 +1,23 @@
+schema: spec-driven
+
+# 项目背景：生成 artifact（proposal / spec / tasks）时注入给 AI
+context: |
+  输出语言：所有 artifact 内容必须使用简体中文。
+  技术栈：TypeScript（target es5、commonjs、experimentalDecorators）、CocosCreator V2.4.15、Node.js
+  引擎：cocos2d-html5 2.4.15；资源目录 assets/（Effect、Material、Scene、Script、Texture）。
+  提交规范：使用 conventional commits（feat / fix / docs / refactor / perf ...）。
+  领域：高性能 2D 渲染。当前重点为自定义 GLRender、GPUInstance 实例化渲染，以及高性能飘字（伤害数字）系统的性能优化。
+  约束：优先考虑批处理 / drawcall 合并 / GC 友好；改动需兼顾移动端性能。
+
+# 每类 artifact 的自定义规则（可选）
+rules:
+  proposal:
+    - 控制在 500 字以内
+    - 必须包含「Non-goals（非目标）」章节
+    - 涉及渲染改动时，需说明对 drawcall / 内存的预期影响
+  spec:
+    - 每条需求用「场景 + 预期行为」描述
+    - 性能相关需求给出可量化指标（如帧率、drawcall 数）
+  tasks:
+    - 任务拆分为不超过 2 小时的小块
+    - 渲染改动需包含性能验证 / 对比步骤

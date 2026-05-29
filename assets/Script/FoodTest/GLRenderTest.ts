@@ -1,5 +1,5 @@
 import { IGLRender } from "../Core/GLRender/IGLRender";
-import { FoodsGLNode } from "../GLRender/FoodsGLNode";
+import { FoodsGLNode } from "./FoodsGLNode";
 
 const { ccclass, property } = cc._decorator;
 
