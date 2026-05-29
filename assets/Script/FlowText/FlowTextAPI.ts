@@ -1,4 +1,4 @@
-import InstanceBatchRenderer, { InstanceRendererTarget, VertexAttributeLike } from './InstanceBatchRenderer';
+import InstanceBatchRenderer, { InstanceRendererTarget, VertexAttributeLike } from '../Core/GpuInstance/InstanceBatchRenderer';
 import {
     AnimationType,
     buildCharMetrics,

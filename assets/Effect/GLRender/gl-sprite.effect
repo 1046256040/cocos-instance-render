@@ -1,0 +1,63 @@
+
+CCEffect %{
+  techniques:
+  - passes:
+    - vert: vs
+      frag: fs
+      blendState:
+        targets:
+        - blend: true
+      rasterizerState:
+        cullMode: none
+      properties:
+        texture: { value: white }
+        bloom: { value: 0 }
+        alpha: { value: 1 }
+        needColorReverse: { value: 0 }
+        u_rate: { value: 0 }
+}%
+
+CCProgram vs %{
+
+precision highp float;
+
+#include <cc-global>
+
+in vec4 a_position;
+
+in mediump vec2 a_uv0;
+out mediump vec2 v_uv0;
+
+void main () {
+  gl_Position = cc_matViewProj * a_position;
+  v_uv0 = a_uv0;
+}
+
+}%
+
+CCProgram fs %{
+
+precision highp float;
+
+uniform sampler2D texture;
+
+uniform ARGS {
+  float bloom;
+  float alpha;
+  float needColorReverse;
+  float u_rate;
+};
+
+in mediump vec2 v_uv0;
+
+void main () {
+  vec4 color = texture2D(texture, v_uv0);
+  vec3 reverseColor = vec3(1.0 - color.r, 1.0 - color.g, 1.0 - color.b);
+  color.rgb = mix(color.rgb, reverseColor, needColorReverse);
+  vec3 flash = vec3(1.0); // 纯白色，后面可以替换成别的颜色
+  color.rgb = mix(color.rgb, flash, clamp(u_rate, 0.0, 1.0));
+  gl_FragColor = color + bloom;
+  gl_FragColor.a = color.a * alpha;
+}
+
+}%

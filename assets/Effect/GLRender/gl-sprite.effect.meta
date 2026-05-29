@@ -1,0 +1,18 @@
+{
+  "ver": "1.0.27",
+  "uuid": "738d7585-1260-421e-a664-9e9b9bdf76a0",
+  "importer": "effect",
+  "compiledShaders": [
+    {
+      "glsl1": {
+        "vert": "\nprecision highp float;\nuniform mat4 cc_matViewProj;\nattribute vec4 a_position;\nattribute mediump vec2 a_uv0;\nvarying mediump vec2 v_uv0;\nvoid main () {\n  gl_Position = cc_matViewProj * a_position;\n  v_uv0 = a_uv0;\n}",
+        "frag": "\nprecision highp float;\nuniform sampler2D texture;\nuniform float bloom;\nuniform float alpha;\nuniform float needColorReverse;\nuniform float u_rate;\nvarying mediump vec2 v_uv0;\nvoid main () {\n  vec4 color = texture2D(texture, v_uv0);\n  vec3 reverseColor = vec3(1.0 - color.r, 1.0 - color.g, 1.0 - color.b);\n  color.rgb = mix(color.rgb, reverseColor, needColorReverse);\n  vec3 flash = vec3(1.0);\n  color.rgb = mix(color.rgb, flash, clamp(u_rate, 0.0, 1.0));\n  gl_FragColor = color + bloom;\n  gl_FragColor.a = color.a * alpha;\n}"
+      },
+      "glsl3": {
+        "vert": "\nprecision highp float;\nuniform CCGlobal {\n  mat4 cc_matView;\n  mat4 cc_matViewInv;\n  mat4 cc_matProj;\n  mat4 cc_matProjInv;\n  mat4 cc_matViewProj;\n  mat4 cc_matViewProjInv;\n  vec4 cc_cameraPos;\n  vec4 cc_time;\n  mediump vec4 cc_screenSize;\n  mediump vec4 cc_screenScale;\n};\nin vec4 a_position;\nin mediump vec2 a_uv0;\nout mediump vec2 v_uv0;\nvoid main () {\n  gl_Position = cc_matViewProj * a_position;\n  v_uv0 = a_uv0;\n}",
+        "frag": "\nprecision highp float;\nuniform sampler2D texture;\nuniform ARGS {\n  float bloom;\n  float alpha;\n  float needColorReverse;\n  float u_rate;\n};\nin mediump vec2 v_uv0;\nvoid main () {\n  vec4 color = texture2D(texture, v_uv0);\n  vec3 reverseColor = vec3(1.0 - color.r, 1.0 - color.g, 1.0 - color.b);\n  color.rgb = mix(color.rgb, reverseColor, needColorReverse);\n  vec3 flash = vec3(1.0);\n  color.rgb = mix(color.rgb, flash, clamp(u_rate, 0.0, 1.0));\n  gl_FragColor = color + bloom;\n  gl_FragColor.a = color.a * alpha;\n}"
+      }
+    }
+  ],
+  "subMetas": {}
+}

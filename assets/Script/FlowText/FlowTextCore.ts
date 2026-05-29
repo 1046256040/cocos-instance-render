@@ -401,6 +401,7 @@ export function formatNumber(value: number, options?: NumberFormatOptions): stri
 
 export function buildCharMetrics(numberOffsets: number[]): Record<string, number> {
     const metrics: Record<string, number> = {};
+    //@ts-ignore
     for (const [key, value] of DEFAULT_CHARSET.entries()) {
         metrics[key] = numberOffsets[value] || 0;
     }

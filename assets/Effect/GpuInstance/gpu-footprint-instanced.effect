@@ -1,0 +1,104 @@
+CCEffect %{
+  techniques:
+  - name: opaque
+    passes:
+    - vert: gpu-footprint-vs:vert
+      frag: gpu-footprint-fs:frag
+      properties:
+        mainTexture: { value: white }
+        alphaThreshold: { value: 0.01 }
+      blendState:
+        targets:
+        - blend: true
+          blendSrc: src_alpha
+          blendDst: one_minus_src_alpha
+          blendDstAlpha: one_minus_src_alpha
+      rasterizerState:
+        cullMode: none
+      depthStencilState:
+        depthTest: false
+        depthWrite: false
+}%
+
+CCProgram gpu-footprint-vs %{
+  precision highp float;
+  #include <cc-global>
+  #include <cc-local>
+
+  in vec3 a_position;
+  in vec2 a_uv0;
+
+  #if USE_INSTANCING
+    in vec4 a_instanced_transform;
+    in vec4 a_instanced_color;
+    in vec4 a_instanced_uv_top;
+    in vec4 a_instanced_uv_bottom;
+    in vec4 a_instanced_misc;
+  #endif
+
+  uniform Constant {
+    float alphaThreshold;
+  };
+
+  out vec2 v_uv0;
+  out vec4 v_color;
+
+  vec4 vert () {
+    vec2 localPosition = a_position.xy;
+    vec2 offset = vec2(0.0);
+    vec2 scale = vec2(1.0);
+    float rotation = 0.0;
+    vec4 tint = vec4(1.0);
+    vec2 uvTopLeft = vec2(0.0, 0.0);
+    vec2 uvTopRight = vec2(1.0, 0.0);
+    vec2 uvBottomLeft = vec2(0.0, 1.0);
+    vec2 uvBottomRight = vec2(1.0, 1.0);
+
+    #if USE_INSTANCING
+      offset = a_instanced_transform.xy;
+      scale = a_instanced_transform.zw;
+      tint = a_instanced_color;
+      uvTopLeft = a_instanced_uv_top.xy;
+      uvTopRight = a_instanced_uv_top.zw;
+      uvBottomLeft = a_instanced_uv_bottom.xy;
+      uvBottomRight = a_instanced_uv_bottom.zw;
+      rotation = a_instanced_misc.x;
+    #endif
+
+    float cosAngle = cos(rotation);
+    float sinAngle = sin(rotation);
+    vec2 scaled = localPosition * scale;
+    vec2 rotated = vec2(
+      scaled.x * cosAngle - scaled.y * sinAngle,
+      scaled.x * sinAngle + scaled.y * cosAngle
+    );
+
+    vec2 uvTop = mix(uvTopLeft, uvTopRight, a_uv0.x);
+    vec2 uvBottom = mix(uvBottomLeft, uvBottomRight, a_uv0.x);
+    v_uv0 = mix(uvTop, uvBottom, a_uv0.y);
+    v_color = tint;
+
+    vec3 position = vec3(rotated + offset, a_position.z);
+    return cc_matViewProj * cc_matWorld * vec4(position, 1.0);
+  }
+}%
+
+CCProgram gpu-footprint-fs %{
+  precision highp float;
+  #include <alpha-test>
+  #include <output>
+
+  uniform sampler2D mainTexture;
+  uniform Constant {
+    float alphaThreshold;
+  };
+
+  in vec2 v_uv0;
+  in vec4 v_color;
+
+  vec4 frag () {
+    vec4 color = texture(mainTexture, v_uv0) * v_color;
+    ALPHA_TEST(color);
+    return CCFragOutput(color);
+  }
+}%
