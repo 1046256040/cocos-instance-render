@@ -582,6 +582,15 @@ export default class Device {
   }
 
   /**
+   * 当前是否运行在 WebGL2 上下文。
+   * @property webgl2
+   * @type {boolean}
+   */
+  get webgl2() {
+    return this._webgl2;
+  }
+
+  /**
    * @param {HTMLElement} canvasEL
    * @param {object} opts
    */
@@ -607,11 +616,23 @@ export default class Device {
       opts.preserveDrawingBuffer = false;
     }
 
+    // 优先创建 WebGL2 上下文（原生实例化），失败回退 WebGL1 + ANGLE。
+    // 设置 Device.forceWebGL1 = true 可强制走 WebGL1 路径，便于对比与回滚.
+    // Device.forceWebGL1 = true;
+    this._webgl2 = false;
     try {
-      gl = canvasEL.getContext('webgl', opts)
-        || canvasEL.getContext('experimental-webgl', opts)
-        || canvasEL.getContext('webkit-3d', opts)
-        || canvasEL.getContext('moz-webgl', opts);
+      if (!Device.forceWebGL1) {
+        gl = canvasEL.getContext('webgl2', opts);
+        if (gl) {
+          this._webgl2 = true;
+        }
+      }
+      if (!gl) {
+        gl = canvasEL.getContext('webgl', opts)
+          || canvasEL.getContext('experimental-webgl', opts)
+          || canvasEL.getContext('webkit-3d', opts)
+          || canvasEL.getContext('moz-webgl', opts);
+      }
     } catch (err) {
       console.error(err);
       return;
@@ -638,28 +659,44 @@ export default class Device {
     };
 
     // https://developer.mozilla.org/zh-CN/docs/Web/API/WebGL_API/Using_Extensions
-    this._initExtensions([
-      'ANGLE_instanced_arrays',
+    // WebGL2 已将以下能力纳入核心，无需通过扩展获取；其余扩展两种模式通用。
+    let extensions = [
       'EXT_texture_filter_anisotropic',
       'EXT_shader_texture_lod',
-      'OES_standard_derivatives',
-      'OES_texture_float',
-      'OES_texture_float_linear',
-      'OES_texture_half_float',
-      'OES_texture_half_float_linear',
-      'OES_vertex_array_object',
       'WEBGL_compressed_texture_astc',
       'WEBGL_compressed_texture_etc',
       'WEBGL_compressed_texture_etc1',
       'WEBGL_compressed_texture_pvrtc',
       'WEBGL_compressed_texture_s3tc',
-      'WEBGL_depth_texture',
-      'WEBGL_draw_buffers',
-    ]);
-    this._instancingExt = this.ext('ANGLE_instanced_arrays');
-    this._vertexAttribDivisor = gl.vertexAttribDivisor || (this._instancingExt && this._instancingExt.vertexAttribDivisorANGLE) || null;
-    this._drawElementsInstanced = gl.drawElementsInstanced || (this._instancingExt && this._instancingExt.drawElementsInstancedANGLE) || null;
-    this._drawArraysInstanced = gl.drawArraysInstanced || (this._instancingExt && this._instancingExt.drawArraysInstancedANGLE) || null;
+    ];
+    if (!this._webgl2) {
+      // 仅 WebGL1 需要：实例化、VAO、浮点纹理、深度纹理、MRT 等。
+      extensions = extensions.concat([
+        'ANGLE_instanced_arrays',
+        'OES_standard_derivatives',
+        'OES_texture_float',
+        'OES_texture_float_linear',
+        'OES_texture_half_float',
+        'OES_texture_half_float_linear',
+        'OES_vertex_array_object',
+        'WEBGL_depth_texture',
+        'WEBGL_draw_buffers',
+      ]);
+    }
+    this._initExtensions(extensions);
+
+    if (this._webgl2) {
+      // WebGL2 原生实例化，直接绑定到 gl 上调用（无扩展对象）。
+      this._instancingExt = null;
+      this._vertexAttribDivisor = gl.vertexAttribDivisor;
+      this._drawElementsInstanced = gl.drawElementsInstanced;
+      this._drawArraysInstanced = gl.drawArraysInstanced;
+    } else {
+      this._instancingExt = this.ext('ANGLE_instanced_arrays');
+      this._vertexAttribDivisor = gl.vertexAttribDivisor || (this._instancingExt && this._instancingExt.vertexAttribDivisorANGLE) || null;
+      this._drawElementsInstanced = gl.drawElementsInstanced || (this._instancingExt && this._instancingExt.drawElementsInstancedANGLE) || null;
+      this._drawArraysInstanced = gl.drawArraysInstanced || (this._instancingExt && this._instancingExt.drawArraysInstancedANGLE) || null;
+    }
     this._initCaps();
     this._initStates();
 
@@ -714,9 +751,16 @@ export default class Device {
     this._caps.maxVertexAttribs = gl.getParameter(gl.MAX_VERTEX_ATTRIBS);
     this._caps.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
 
-    this._caps.maxDrawBuffers = extDrawBuffers ? gl.getParameter(extDrawBuffers.MAX_DRAW_BUFFERS_WEBGL) : 1;
-    this._caps.maxColorAttachments = extDrawBuffers ? gl.getParameter(extDrawBuffers.MAX_COLOR_ATTACHMENTS_WEBGL) : 1;
-    this._caps.supportInstancing = !!(this._instancingExt || gl.drawElementsInstanced);
+    if (this._webgl2) {
+      // WebGL2: MRT 与实例化为核心能力，不依赖扩展。
+      this._caps.maxDrawBuffers = gl.getParameter(gl.MAX_DRAW_BUFFERS);
+      this._caps.maxColorAttachments = gl.getParameter(gl.MAX_COLOR_ATTACHMENTS);
+      this._caps.supportInstancing = true;
+    } else {
+      this._caps.maxDrawBuffers = extDrawBuffers ? gl.getParameter(extDrawBuffers.MAX_DRAW_BUFFERS_WEBGL) : 1;
+      this._caps.maxColorAttachments = extDrawBuffers ? gl.getParameter(extDrawBuffers.MAX_COLOR_ATTACHMENTS_WEBGL) : 1;
+      this._caps.supportInstancing = !!(this._instancingExt || gl.drawElementsInstanced);
+    }
   }
 
   _initStates() {
@@ -726,7 +770,7 @@ export default class Device {
     gl.disable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ZERO);
     gl.blendEquation(gl.FUNC_ADD);
-    gl.blendColor(1,1,1,1);
+    gl.blendColor(1, 1, 1, 1);
 
     gl.colorMask(true, true, true, true);
 
@@ -737,7 +781,7 @@ export default class Device {
     gl.depthFunc(gl.LESS);
     gl.depthMask(false);
     gl.disable(gl.POLYGON_OFFSET_FILL);
-    gl.depthRange(0,1);
+    gl.depthRange(0, 1);
 
     gl.disable(gl.STENCIL_TEST);
     gl.stencilFunc(gl.ALWAYS, 0, 0xFF);
@@ -768,7 +812,7 @@ export default class Device {
     }
   }
 
-  _restoreIndexBuffer () {
+  _restoreIndexBuffer() {
     const gl = this._gl;
 
     let ib = this._current.indexBuffer;
@@ -898,7 +942,7 @@ export default class Device {
    */
   clear(opts) {
     if (opts.color === undefined && opts.depth === undefined && opts.stencil === undefined) {
-        return;
+      return;
     }
     const gl = this._gl;
     let flags = 0;
@@ -1302,14 +1346,14 @@ export default class Device {
   /**
    * @method resetDrawCalls
    */
-  resetDrawCalls () {
+  resetDrawCalls() {
     this._stats.drawcalls = 0;
   }
-  
+
   /**
    * @method getDrawCalls
    */
-  getDrawCalls () {
+  getDrawCalls() {
     return this._stats.drawcalls;
   }
 
