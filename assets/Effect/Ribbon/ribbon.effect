@@ -1,0 +1,54 @@
+CCEffect %{
+  techniques:
+  - passes:
+    - vert: vs
+      frag: fs
+      blendState:
+        targets:
+        - blend: true
+      rasterizerState:
+        cullMode: none
+      properties:
+        texture: { value: white }
+        alpha: { value: 1 }
+}%
+
+CCProgram vs %{
+
+precision highp float;
+
+#include <cc-global>
+
+in vec4 a_position;
+in mediump vec2 a_uv0;
+out mediump vec2 v_uv0;
+
+void main () {
+  // 顶点为世界坐标（assembler 已烘焙世界变换）。
+  gl_Position = cc_matViewProj * a_position;
+  v_uv0 = a_uv0;
+}
+
+}%
+
+CCProgram fs %{
+
+precision highp float;
+
+uniform sampler2D texture;
+
+uniform ARGS {
+  float alpha;
+};
+
+in mediump vec2 v_uv0;
+
+void main () {
+  // 直接用硬件 wrap=REPEAT 平铺（无 fract 跳变接缝）。
+  // 需要纹理 packable=false；WebGL1 下还需 POT 纹理才能 REPEAT。
+  vec4 color = texture2D(texture, v_uv0);
+  gl_FragColor = color;
+  gl_FragColor.a = color.a * alpha;
+}
+
+}%

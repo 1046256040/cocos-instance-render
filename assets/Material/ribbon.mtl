@@ -1,0 +1,20 @@
+{
+  "__type__": "cc.Material",
+  "_name": "ribbon",
+  "_objFlags": 0,
+  "_native": "",
+  "_effectAsset": {
+    "__uuid__": "89ca8dc1-1f89-4f78-b3ec-cd2663a3393b"
+  },
+  "_techniqueIndex": 0,
+  "_techniqueData": {
+    "0": {
+      "props": {
+        "texture": {
+          "__uuid__": "29062160-69b2-4909-b8c9-a84549b486e8"
+        }
+      },
+      "defines": {}
+    }
+  }
+}
